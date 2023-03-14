@@ -64,8 +64,8 @@ def plot_performance(season, queen):
         title = 'Contestant Outcomes',
         labels = {
             'season': 'Season',
-            'episode': 'Episode Number',
-            'outcome': 'Episode Outcome',
+            'episode': 'Episode',
+            'outcome': 'Outcome',
             'contestant': 'Queen'
         },
         hover_name = 'contestant',
