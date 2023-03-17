@@ -1,9 +1,24 @@
 import plotly.express as px
 import pandas as pd
-from dash import dash, dcc, html, Input, Output
+from dash import dash, dcc, html, Input, Output, State
 
-# import data
+# import data 
 dr_data = pd.read_csv('data/drag.csv', index_col=0)
+
+# remove all episodes where queens didn't compete
+dr_data = dr_data[dr_data['participant'].apply(lambda x: x == 1)]
+
+dob = (
+    dr_data[['season', 'rank', 'contestant', 'outcome']]
+    .groupby(['season', 'rank', 'contestant'])
+    .value_counts(['outcome'])
+    .reset_index(name = 'count')
+    .pivot(index = ['season', 'rank', 'contestant'], columns = 'outcome', values = 'count')
+    .reset_index()
+    .fillna(0)
+)
+dob['dob'] = 2 * dob['WIN'] + dob['HIGH'] - dob['LOW'] - 2 * dob['BTM']
+
 app = dash.Dash(__name__)
 
 app.layout = html.Div([
@@ -21,6 +36,7 @@ app.layout = html.Div([
     dcc.Dropdown(
         id = 'queen', 
         options = sorted(dr_data['contestant'].unique()),
+        value = 'Jinkx Monsoon',
         multi=True,
         placeholder='Select one or more queens to compare'
     ),
@@ -31,14 +47,22 @@ app.layout = html.Div([
 
 @app.callback(
     Output('queen', 'options'),
-    Input('season', 'value')
+    Output('queen', 'value'),
+    Input('season', 'value'),
+    State('queen', 'value')
 )
-def update_queens(season):
+def update_queens(season, queens):
     if season is not None and len(season) != 0:
-        options = sorted(dr_data[dr_data['season'].apply(lambda x: x in season)]['contestant'].unique())
+        seasonal = dr_data.query("season in @season")
+        options = sorted(seasonal['contestant'].unique())
+        values = seasonal.sort_values('rank')['contestant'].unique()[:2]
     else:
         options = sorted(dr_data['contestant'].unique())
-    return options
+        if queens is None or len(queens) == 0:
+            values = dr_data.query("winner == 1")['contestant'].unique()
+        else:
+            values = queens
+    return options, values
 
 @app.callback(
     Output('performance', 'figure'),
@@ -46,40 +70,33 @@ def update_queens(season):
     Input('queen', 'value')
 )
 def plot_performance(season, queen):
-    # remove all episodes where queens didn't compete
-    filtered = dr_data[dr_data['participant'].apply(lambda x: x == 1)]
-
+    filtered = dob
     if season is not None and len(season) != 0:
-        filtered = filtered[filtered['season'].apply(lambda x: x in season)]
+        filtered = dob.query("season in @season")
     
     if queen is not None and len(queen) != 0:
-        filtered = filtered[filtered['contestant'].apply(lambda x: x in queen)]
+        filtered = dob.query("contestant in @queen")
     
-    fig = px.line(
-        filtered.sort_values('episode'),
-        x = 'episode',
-        y = 'outcome',
-        color = 'contestant',
-        markers = True,
-        title = 'Contestant Outcomes',
+    fig = px.bar(
+        filtered.sort_values(['rank', 'dob'], ascending = [False, True]),
+        x = 'dob',
+        y = 'contestant',
+        color = 'dob',
+        color_continuous_scale='Plotly3',
+        title = 'Contestant Performance Scores',
         labels = {
+            'dob': 'Dusted or Busted Score',
             'season': 'Season',
-            'episode': 'Episode',
-            'outcome': 'Outcome',
-            'contestant': 'Queen'
+            'contestant': 'Queen',
+            'rank': 'Rank',
+            'WIN': 'Wins',
+            'HIGH': 'High',
+            'LOW': 'Low',
+            'BTM': 'Bottom'
         },
         hover_name = 'contestant',
-        hover_data = {'contestant': False, 'season': True, 'episode': True, 'outcome': True})
+        hover_data = {'contestant': False, 'season': True, 'rank': True, 'WIN': True, 'HIGH': True, 'LOW': True, 'BTM': True})
     
-    fig.update_yaxes(
-        type='category', 
-        categoryorder='array', 
-        categoryarray=['BTM', 'LOW', 'SAFE', 'HIGH', 'WIN']
-    )
-
-    fig.update_xaxes(
-        dtick=1
-    )
     return fig
     
 
