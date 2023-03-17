@@ -1,6 +1,10 @@
 import plotly.express as px
 import pandas as pd
+import dash_bootstrap_components as dbc
 from dash import dash, dcc, html, Input, Output, State
+
+# url for themes
+dbc_css = "https://cdn.jsdelivr.net/gh/AnnMarieW/dash-bootstrap-templates/dbc.min.css"
 
 # import data 
 dr_data = pd.read_csv('data/drag.csv', index_col=0)
@@ -8,6 +12,7 @@ dr_data = pd.read_csv('data/drag.csv', index_col=0)
 # remove all episodes where queens didn't compete
 dr_data = dr_data[dr_data['participant'].apply(lambda x: x == 1)]
 
+# dob table
 dob = (
     dr_data[['season', 'rank', 'contestant', 'outcome']]
     .groupby(['season', 'rank', 'contestant'])
@@ -19,31 +24,83 @@ dob = (
 )
 dob['dob'] = 2 * dob['WIN'] + dob['HIGH'] - dob['LOW'] - 2 * dob['BTM']
 
-app = dash.Dash(__name__)
+app = dash.Dash(__name__, external_stylesheets=[dbc.themes.MINTY, dbc_css])
 
-app.layout = html.Div([
+app.layout = dbc.Container([
     html.H1('Drag Race Visualizer'),
-    html.Label('Seasons:'),
-    dcc.Dropdown(
-        id = 'season', 
-        options = sorted(dr_data['season'].unique()),
-        value = 'S01',
-        multi=True,
-        placeholder='Select one or more seasons to compare'
-    ),
     html.Br(),
-    html.Label('Queens:'),
-    dcc.Dropdown(
-        id = 'queen', 
-        options = sorted(dr_data['contestant'].unique()),
-        value = 'Jinkx Monsoon',
-        multi=True,
-        placeholder='Select one or more queens to compare'
-    ),
-    dcc.Graph(
-        id = 'performance'
-    )
-])
+    dbc.Row([
+        dbc.Col([
+            dbc.Collapse(
+                dbc.Card(
+                    dbc.CardBody([
+                        html.P("""
+                            This data was originally obtained from data scraped from the RuPaul's
+                            Drag Race wiki. The bar graph is based on the unofficial Dusted or Busted score, 
+                            which offers a numerical representation of a queen's performance
+                            on their respective season, as follows:
+                        """),
+                        html.Table([
+                            html.Tr([html.Th('Rank'), html.Th('Score')]),
+                            html.Tr([html.Td('Win'), html.Td('+2')]),
+                            html.Tr([html.Td('High'), html.Td('+1')]),
+                            html.Tr([html.Td('Safe'), html.Td('+0')]),
+                            html.Tr([html.Td('Low'), html.Td('-1')]),
+                            html.Tr([html.Td('Bottom'), html.Td('-2')]),
+                        ])
+                    ])
+                ), 
+                id = 'helptext', 
+                is_open = False
+            ),
+            dbc.Button(
+                "Show Info",
+                id="collapse-button",
+                className="mb-3",
+                color="primary",
+                size="sm"
+            ),
+            html.Br(),
+            html.Label('Seasons:'),
+            dcc.Dropdown(
+                id = 'season', 
+                options = sorted(dr_data['season'].unique()),
+                multi=True,
+                placeholder='Select one or more seasons'
+            ),
+            html.Br(),
+            html.Label('Queens:'),
+            dcc.Dropdown(
+                id = 'queen', 
+                options = sorted(dr_data['contestant'].unique()),
+                value = dr_data.query("winner == 1")['contestant'].unique(),
+                multi=True,
+                placeholder='Select one or more queens'
+            )
+        ], md = 3),
+        dbc.Col([
+            dcc.Graph(
+                id = 'performance'
+            )
+        ], md = 9)
+    ])
+], className = "dbc")
+
+@app.callback(
+    Output("helptext", "is_open"),
+    Output("collapse-button", "children"),
+    Input("collapse-button", "n_clicks"),
+    State("helptext", "is_open"),
+)
+def toggle_collapse(n, is_open):
+    button_text = "Show Info"
+    if n:
+        if is_open:
+            button_text = "Show Info"
+        else:
+            button_text = "Hide Info"
+        return not is_open, button_text
+    return is_open, button_text
 
 @app.callback(
     Output('queen', 'options'),
@@ -83,6 +140,7 @@ def plot_performance(season, queen):
         y = 'contestant',
         color = 'dob',
         color_continuous_scale='Plotly3',
+        range_color=[-10, 15],
         title = 'Contestant Performance Scores',
         labels = {
             'dob': 'Dusted or Busted Score',
@@ -97,6 +155,10 @@ def plot_performance(season, queen):
         hover_name = 'contestant',
         hover_data = {'contestant': False, 'season': True, 'rank': True, 'WIN': True, 'HIGH': True, 'LOW': True, 'BTM': True})
     
+    fig.update_layout(
+        coloraxis_showscale = False,
+        margin=dict(l=10, r=10, t=30, b=0)
+    )
     return fig
     
 
