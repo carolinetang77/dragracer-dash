@@ -9,7 +9,7 @@ dbc_css = "https://cdn.jsdelivr.net/gh/AnnMarieW/dash-bootstrap-templates/dbc.mi
 load_figure_template('pulse')
 
 # import data 
-dr_data = pd.read_csv('./data/drag.csv', index_col=0)
+dr_data = pd.read_csv('../data/drag.csv', index_col=0)
 
 # remove all episodes where queens didn't compete
 dr_data = dr_data[dr_data['participant'].apply(lambda x: x == 1)]
