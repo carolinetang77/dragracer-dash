@@ -28,6 +28,8 @@ dob['dob'] = 2 * dob['WIN'] + dob['HIGH'] - dob['LOW'] - 2 * dob['BTM']
 
 app = dash.Dash(__name__, external_stylesheets=[dbc.themes.PULSE, dbc_css])
 
+server = app.server
+
 app.layout = dbc.Container([
     html.H1('Drag Race Visualizer'),
     html.Br(),
