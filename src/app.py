@@ -35,6 +35,7 @@ app.layout = dbc.Container([
     html.Br(),
     dbc.Row([
         dbc.Col([
+            html.Label('Data and Score calculation'),
             dbc.Collapse(
                 dbc.Card(
                     dbc.CardBody([
@@ -65,6 +66,7 @@ app.layout = dbc.Container([
             ),
             html.Br(),
             html.Br(),
+            html.H3('Filters')
             html.Label('Seasons:'),
             dcc.Dropdown(
                 id = 'season', 
