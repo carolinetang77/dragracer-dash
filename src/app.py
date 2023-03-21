@@ -95,7 +95,8 @@ app.layout = dbc.Container([
             html.H3('Performance Summary'),
             dash_table.DataTable(
                 id='table', 
-                columns=[{"name": col, "id": col} for col in dob.columns],
+                columns=[{"name": col.title(), "id": col} for col in dob.columns[:3]]
+                        + [{"name": col.upper(), "id": col} for col in dob.columns[3:]],
                 sort_action="native",
                 page_size=15,
                 fixed_rows={'headers': True},
